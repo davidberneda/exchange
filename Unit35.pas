@@ -152,9 +152,13 @@ asm
   xchg ecx, [edx]
   mov [eax], ecx
   {$ELSE}
+
+  {$IFNDEF FPC} // No x64 asm
   mov rcx, [rax]
   xchg rcx, [rdx]
   mov [rax], rcx
+  {$ENDIF}
+
   {$ENDIF}
 end;
 
