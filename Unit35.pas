@@ -123,6 +123,11 @@ begin
   B^:=tmp;
 end;
 
+procedure InlineExchangePtr(const X:TTestArray; const A,B:Integer); overload; inline;
+begin
+  InlineExchange(PTestType(@X[A])^, PTestType(@X[B])^);
+end;
+
 {$IFDEF FPC}
 { TStopWatch }
 
@@ -209,6 +214,13 @@ begin
       CallExchange(@X[23],@X[45]);
 
   Eval(t1.ElapsedMilliseconds,'Call Inline @A @B');
+
+  // Call Inline A B with Ptr
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      InlineExchangePtr(X,23,45);
+
+  Eval(t1.ElapsedMilliseconds,'Inline A B with ptr');
 end;
 
 procedure TFormExchangeTest.TestNoArray;
