@@ -3,7 +3,7 @@ object FormExchangeTest: TFormExchangeTest
   Top = 0
   ActiveControl = Memo1
   Caption = 'Exchange Test'
-  ClientHeight = 300
+  ClientHeight = 466
   ClientWidth = 594
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -19,9 +19,18 @@ object FormExchangeTest: TFormExchangeTest
     Left = 32
     Top = 40
     Width = 513
-    Height = 217
+    Height = 353
     Lines.Strings = (
       'Memo1')
     TabOrder = 0
+  end
+  object Button1: TButton
+    Left = 32
+    Top = 420
+    Width = 129
+    Height = 25
+    Caption = 'Test Inline only'
+    TabOrder = 1
+    OnClick = Button1Click
   end
 end

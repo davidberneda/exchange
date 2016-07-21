@@ -9,6 +9,9 @@ uses
   SysUtils, Classes, Graphics,
   Controls, Forms, Dialogs, StdCtrls;
 
+// For more information:
+// https://plus.google.com/+DavidBerneda/posts/TG9DdbqgVtZ
+
 type
   {$DEFINE TEST_INT32}
   {.$DEFINE TEST_INT64}
@@ -25,7 +28,9 @@ type
 
   TFormExchangeTest = class(TForm)
     Memo1: TMemo;
+    Button1: TButton;
     procedure FormCreate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
   private
     { Private declarations }
 
@@ -69,6 +74,30 @@ type
 
 var
   X : TTestArray;
+
+type
+  TArrayTest=record
+  public
+    class procedure Exchange<T>(var X:Array of T; const A,B:Integer); overload; static;
+  end;
+
+  TArrayTestPointer<T>=record
+  public
+    type
+      PT=^T;
+
+    class procedure Exchange(const A,B:PT); overload; static;
+    class procedure InlineExchange(const A,B:PT); overload; inline; static;
+  end;
+
+  TArrayLocalTest<T>=record
+  public
+    var
+      X : Array of T;
+
+    procedure Exchange(const A,B:Integer); overload;
+    procedure InlineExchange(const A,B:Integer); overload; inline;
+  end;
 
 procedure Exchange(const X:TTestArray; const A,B:Integer); overload;
 var tmp : TestType;
@@ -162,6 +191,77 @@ asm
   {$ENDIF}
 end;
 
+// From : Mahdi Safsafi
+
+{$IF DEFINED(CPUX86)}
+procedure AsmStackExchange(var A, B: Int32);
+asm
+  push [eax]
+  push [edx]
+  pop [eax]
+  pop [edx]
+end;
+
+procedure AsmExchange2(var A, B: Int32);
+asm
+  push ebx
+  push ecx
+  mov ebx,[eax]
+  mov ecx,[edx]
+  mov [eax],ecx
+  mov [edx],ebx
+  pop ecx
+  pop ebx
+end;
+{$ENDIF}
+
+
+{ TArrayTest }
+
+class procedure TArrayTest.Exchange<T>(var X: array of T; const A, B: Integer);
+var tmp : T;
+begin
+  tmp:=X[A];
+  X[A]:=X[B];
+  X[B]:=tmp;
+end;
+
+{ TArrayTestPointer }
+
+class procedure TArrayTestPointer<T>.Exchange(const A, B: PT);
+var tmp : T;
+begin
+  tmp:=A^;
+  A^:=B^;
+  B^:=tmp;
+end;
+
+class procedure TArrayTestPointer<T>.InlineExchange(const A, B: PT);
+var tmp : T;
+begin
+  tmp:=A^;
+  A^:=B^;
+  B^:=tmp;
+end;
+
+{ TArrayLocalTest<T> }
+
+procedure TArrayLocalTest<T>.Exchange(const A, B: Integer);
+var tmp : T;
+begin
+  tmp:=X[A];
+  X[A]:=X[B];
+  X[B]:=tmp;
+end;
+
+procedure TArrayLocalTest<T>.InlineExchange(const A, B: Integer);
+var tmp : T;
+begin
+  tmp:=X[A];
+  X[A]:=X[B];
+  X[B]:=tmp;
+end;
+
 procedure TFormExchangeTest.Eval(const Elapsed:Int64; const Desc:String);
 begin
   Memo1.Lines.Add(Desc+': '+IntToStr(Elapsed)+'msec');
@@ -178,6 +278,7 @@ const
 procedure TFormExchangeTest.TestArray;
 var t1 : TStopwatch;
     t : Integer;
+    tmp : TArrayLocalTest<TestType>;
 begin
   SetLength(X,1000);
 
@@ -204,7 +305,6 @@ begin
       InlineExchange(X,23,45);
 
   Eval(t1.ElapsedMilliseconds,'Inline Array A B');
-
   // Inline @A @B
   t1:=TStopwatch.StartNew;
   for t:=1 to Times do
@@ -225,6 +325,62 @@ begin
       InlineExchangePtr(X,23,45);
 
   Eval(t1.ElapsedMilliseconds,'Inline A B with ptr');
+
+  {$IFDEF TEST_INT32}
+
+  {$IF DEFINED(CPUX86)}
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      AsmStackExchange(X[23],X[45]);
+
+  Eval(t1.ElapsedMilliseconds,'Asm Stack Exchange');
+
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      AsmExchange2(X[23],X[45]);
+
+  Eval(t1.ElapsedMilliseconds,'Asm Stack Exchange2');
+  {$ENDIF}
+
+  {$ENDIF}
+
+  // Generic Exchange<T> X A B
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      TArrayTest.Exchange<TestType>(X,23,45);
+
+  EvalNoArray(t1.ElapsedMilliseconds,'Generic Exchange<T> X A B');
+
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      TArrayTestPointer<TestType>.Exchange(@X[23],@X[45]);
+
+  EvalNoArray(t1.ElapsedMilliseconds,'Generic Pointer Exchange @A @B');
+
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      TArrayTestPointer<TestType>.InlineExchange(@X[23],@X[45]);
+
+  EvalNoArray(t1.ElapsedMilliseconds,'Generic Pointer InlineExchange @A @B');
+
+  // Generic local Exchange<T> A B
+
+  // Prepare a copy
+  SetLength(tmp.X,Length(X));
+  for t:=0 to High(X) do
+      tmp.X[t]:=X[t];
+
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      tmp.Exchange(23,45);
+
+  EvalNoArray(t1.ElapsedMilliseconds,'Generic Local Exchange A B');
+
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      tmp.InlineExchange(23,45);
+
+  EvalNoArray(t1.ElapsedMilliseconds,'Generic Local InlineExchange A B');
 end;
 
 procedure TFormExchangeTest.TestNoArray;
@@ -288,6 +444,18 @@ begin
   Memo1.Lines.Add('');
 
   TestNoArray;
+end;
+
+procedure TFormExchangeTest.Button1Click(Sender: TObject);
+var t1 : TStopwatch;
+    t : Integer;
+begin
+  // Just run a single test: Inline @A @B
+  t1:=TStopwatch.StartNew;
+  for t:=1 to Times do
+      InlineExchange(@X[23],@X[45]);
+
+  Eval(t1.ElapsedMilliseconds,'Inline Exchange @A @B');
 end;
 
 end.
