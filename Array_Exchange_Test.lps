@@ -8,6 +8,7 @@
       <Unit0>
         <Filename Value="Array_Exchange_Test.dpr"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <CursorPos X="49" Y="12"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
@@ -19,7 +20,6 @@
         <ComponentName Value="FormExchangeTest"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
         <TopLine Value="136"/>
         <CursorPos X="3" Y="161"/>
@@ -95,5 +95,4 @@
       </Position16>
     </JumpHistory>
   </ProjectSession>
-  <SkipCheckLCLInterfaces Value="True"/>
 </CONFIG>
